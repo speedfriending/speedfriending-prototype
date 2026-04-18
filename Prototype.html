@@ -488,10 +488,286 @@ function FlowExplorer({ onExit }) {
 }
 
 // ═════════════════════════════════════════════════════════════════
-// KOMPONENT: Hovedmeny (storylines + flows)
+// LIVE APP — ekte klikkbar app-simulering
+// ═════════════════════════════════════════════════════════════════
+// Full tab-basert navigasjon med stack per tab. Tilbake-knapp.
+// Starter på Home. Klikk tab-bar i bunn for å bytte områder.
+// Klikk handlinger under telefonen for å gå videre i en reise.
 // ═════════════════════════════════════════════════════════════════
 
-function Menu({ onSelectStoryline, onOpenFlows }) {
+const LIVE_SCREENS = {
+  // ━━━ HOVED-TABS (rot for hver tab) ━━━
+  'home': {
+    render: () => <window.H_ScreenHome/>,
+    tab: 'home',
+    label: 'Hjem',
+    actions: [
+      { type:'push',   target:'event-detail', label:'Åpne kveldens event' },
+      { type:'switch', target:'events',       label:'Se alle events' },
+      { type:'push',   target:'frida',        label:'Snakk med Frida' },
+    ],
+  },
+  'events': {
+    render: () => <window.H_ScreenEvents/>,
+    tab: 'events',
+    label: 'Events',
+    actions: [
+      { type:'push', target:'event-detail',  label:'Vinsmaking med Martine' },
+      { type:'push', target:'search',        label:'Søk events' },
+      { type:'push', target:'filter',        label:'Filter' },
+    ],
+  },
+  'crew': {
+    render: () => <window.H_ScreenCrewList/>,
+    tab: 'crew',
+    label: 'Crew',
+    actions: [
+      { type:'push', target:'crew-detail',  label:'Åpne Onsdag-crew' },
+      { type:'push', target:'crew-chat',    label:'Crew-chat' },
+    ],
+  },
+  'chat': {
+    render: () => <window.H_ScreenChatList/>,
+    tab: 'chat',
+    label: 'Chat',
+    actions: [
+      { type:'push', target:'chat-detail',  label:'Chat med Kari' },
+      { type:'push', target:'frida',        label:'Snakk med Frida' },
+    ],
+  },
+  'you': {
+    render: () => <window.H_ScreenProfile/>,
+    tab: 'you',
+    label: 'Du',
+    actions: [
+      { type:'push', target:'portfolio',        label:'Din portefølje (kontakter)' },
+      { type:'push', target:'health',           label:'Min sosiale helse' },
+      { type:'push', target:'settings',         label:'Innstillinger' },
+      { type:'push', target:'ambassador-land',  label:'Bli vertinne' },
+      { type:'push', target:'wrapped',          label:'Vis Wrapped 2026' },
+    ],
+  },
+
+  // ━━━ DETALJ-SKJERMER (stackes på toppen av en tab) ━━━
+  'event-detail': {
+    render: () => <window.H_ScreenConfirmation/>,
+    label: 'Event-detalj',
+    actions: [
+      { type:'push', target:'calendar',   label:'Legg i kalender' },
+      { type:'pop',  label:'Tilbake til events' },
+    ],
+  },
+  'calendar': {
+    render: () => <window.H_ScreenCalendarInvite/>,
+    label: 'Kalender-invitasjon',
+    actions: [
+      { type:'popAll', label:'Ferdig — tilbake til Events' },
+    ],
+  },
+  'search': {
+    render: () => <window.H_ScreenSearch/>,
+    label: 'Søk',
+    actions: [{ type:'pop', label:'Tilbake' }],
+  },
+  'filter': {
+    render: () => <window.H_ScreenFilter/>,
+    label: 'Filter',
+    actions: [{ type:'pop', label:'Bruk filter' }],
+  },
+  'crew-detail': {
+    render: () => <window.H_ScreenCrewDetail/>,
+    label: 'Crew-detalj',
+    actions: [
+      { type:'push', target:'crew-chat', label:'Åpne crew-chat' },
+      { type:'pop',  label:'Tilbake' },
+    ],
+  },
+  'crew-chat': {
+    render: () => <window.H_ScreenCrewChat/>,
+    label: 'Crew-chat',
+    actions: [{ type:'pop', label:'Tilbake' }],
+  },
+  'chat-detail': {
+    render: () => <window.H_ScreenChatDetail/>,
+    label: 'Chat-detalj',
+    actions: [{ type:'pop', label:'Tilbake til chat' }],
+  },
+  'frida': {
+    render: () => <window.H_ScreenChatDetail/>,
+    label: 'Frida (AI-venninne)',
+    actions: [{ type:'pop', label:'Tilbake' }],
+  },
+  'portfolio': {
+    render: () => <window.H_ScreenPortfolio/>,
+    label: 'Portefølje',
+    actions: [{ type:'pop', label:'Tilbake' }],
+  },
+  'health': {
+    render: () => <window.H_ScreenHealth/>,
+    label: 'Sosial helse',
+    actions: [{ type:'pop', label:'Tilbake' }],
+  },
+  'settings': {
+    render: () => <window.H_ScreenSettings/>,
+    label: 'Innstillinger',
+    actions: [{ type:'pop', label:'Tilbake' }],
+  },
+  'ambassador-land': {
+    render: () => <window.H_WebAmbassador/>,
+    label: 'Bli vertinne (web)',
+    phone: 'web',
+    actions: [
+      { type:'push', target:'ambassador-create', label:'Planlegg første event' },
+      { type:'pop',  label:'Tilbake' },
+    ],
+  },
+  'ambassador-create': {
+    render: () => <window.H_ScreenAmbCreate1/>,
+    label: 'Arrangør — nytt event',
+    actions: [{ type:'pop', label:'Tilbake' }],
+  },
+  'wrapped': {
+    render: () => <window.H_ScreenWrapped/>,
+    label: 'Wrapped 2026',
+    actions: [{ type:'pop', label:'Tilbake' }],
+  },
+};
+
+function LiveApp({ onExit }) {
+  // Per-tab stack: hver tab husker sin egen navigasjon
+  const [tab, setTab] = useState('home');
+  const [stacks, setStacks] = useState({ home:[], events:[], crew:[], chat:[], you:[] });
+
+  const currentStack = stacks[tab] || [];
+  const currentScreenKey = currentStack.length > 0 ? currentStack[currentStack.length-1] : tab;
+  const config = LIVE_SCREENS[currentScreenKey];
+
+  const push = (target) => {
+    setStacks(s => ({ ...s, [tab]: [...(s[tab]||[]), target] }));
+  };
+  const pop = () => {
+    setStacks(s => ({ ...s, [tab]: (s[tab]||[]).slice(0, -1) }));
+  };
+  const popAll = () => {
+    setStacks(s => ({ ...s, [tab]: [] }));
+  };
+  const switchTab = (newTab) => {
+    setTab(newTab);
+  };
+
+  const handleAction = (a) => {
+    if (a.type === 'push') push(a.target);
+    else if (a.type === 'pop') pop();
+    else if (a.type === 'popAll') popAll();
+    else if (a.type === 'switch') { popAll(); switchTab(a.target); }
+  };
+
+  const stackDepth = currentStack.length;
+  const phoneType = config.phone === 'web' ? undefined : tab;
+
+  // Breadcrumb: Tab · Detail1 · Detail2
+  const crumbs = [LIVE_SCREENS[tab].label, ...currentStack.map(k => LIVE_SCREENS[k]?.label || k)];
+
+  return (
+    <div style={{minHeight:'100vh', background:'linear-gradient(160deg, #1A0F22 0%, #0F0812 100%)', color:'#fff', padding:'32px 20px 60px'}}>
+
+      {/* Top bar */}
+      <div style={{maxWidth:1200, margin:'0 auto 20px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+        <button onClick={onExit} style={{padding:'8px 14px', borderRadius:18, border:'1px solid rgba(255,255,255,.15)', background:'rgba(255,255,255,.05)', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
+          ← Tilbake til meny
+        </button>
+        <div style={{fontSize:11, color:'rgba(255,255,255,.4)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.14em'}}>
+          Live App · ekte klikkbar simulering
+        </div>
+      </div>
+
+      {/* Tittel + breadcrumb */}
+      <div style={{maxWidth:1200, margin:'0 auto 24px'}}>
+        <div style={{fontFamily:'Fraunces, serif', fontSize:28, fontWeight:700, letterSpacing:'-0.02em', color:'#fff', marginBottom:8}}>
+          Live App
+        </div>
+        <div style={{fontSize:13, color:'rgba(255,255,255,.55)', display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+          <span style={{color:'rgba(255,255,255,.35)'}}>Du er på:</span>
+          {crumbs.map((c, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <span style={{color:'rgba(255,255,255,.25)'}}>›</span>}
+              <span style={{color: i === crumbs.length-1 ? '#F0826B' : 'rgba(255,255,255,.65)', fontWeight: i === crumbs.length-1 ? 700 : 500}}>{c}</span>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* Telefonramme med stack-tilbake-knapp */}
+      <div style={{display:'flex', justifyContent:'center', marginBottom:16, position:'relative'}}>
+        <div style={{position:'relative'}}>
+          <H_Phone activeTab={phoneType} onTabChange={switchTab}>
+            {config.render()}
+          </H_Phone>
+          {stackDepth > 0 && (
+            <button
+              onClick={pop}
+              style={{
+                position:'absolute', top:60, left:18, zIndex:70,
+                width:38, height:38, borderRadius:19,
+                background:'rgba(255,255,255,.95)', border:'none',
+                boxShadow:'0 4px 12px rgba(0,0,0,.2)', cursor:'pointer',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontFamily:'inherit',
+              }}
+              aria-label="Tilbake"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18"><path d="M11 2L4 9l7 7" stroke="#2A2134" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tab-bar hint */}
+      <div style={{textAlign:'center', fontSize:11, color:'rgba(255,255,255,.3)', marginBottom:20, letterSpacing:'.1em', textTransform:'uppercase'}}>
+        ↑ Tab-baren i bunn bytter tab · Knappene under hopper til detaljer
+      </div>
+
+      {/* Handlings-meny */}
+      {config.actions && config.actions.length > 0 && (
+        <div style={{maxWidth:900, margin:'0 auto'}}>
+          <div style={{fontSize:10.5, fontWeight:700, letterSpacing:'.18em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:12, textAlign:'center'}}>
+            Hva vil du gjøre nå?
+          </div>
+          <div style={{display:'flex', flexWrap:'wrap', gap:10, justifyContent:'center'}}>
+            {config.actions.map((a, i) => {
+              const isBack = a.type === 'pop' || a.type === 'popAll';
+              return (
+                <button key={i} onClick={()=>handleAction(a)} style={{
+                  padding:'14px 22px', borderRadius:26, border:'none',
+                  background: isBack
+                    ? 'rgba(255,255,255,.08)'
+                    : 'linear-gradient(100deg, #F0826B, #7F4D95)',
+                  color:'#fff', fontSize:13.5, fontWeight:700, cursor:'pointer',
+                  boxShadow: isBack ? 'none' : '0 8px 20px rgba(240,130,107,.35)',
+                  fontFamily:'inherit',
+                  border: isBack ? '1px solid rgba(255,255,255,.15)' : 'none',
+                }}>
+                  {isBack ? '← ' : ''}{a.label}{!isBack ? ' →' : ''}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Debug: vis stack-tilstand */}
+      <div style={{maxWidth:900, margin:'30px auto 0', fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center', fontFamily:'monospace'}}>
+        tab={tab} · stack={JSON.stringify(currentStack)} · 5 taber · {Object.keys(LIVE_SCREENS).length} skjermer tilgjengelig
+      </div>
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════
+// KOMPONENT: Hovedmeny (storylines + flows + live app)
+// ═════════════════════════════════════════════════════════════════
+
+function Menu({ onSelectStoryline, onOpenFlows, onOpenLive }) {
   return (
     <div style={{minHeight:'100vh', background:'linear-gradient(160deg, #1A0F22 0%, #0F0812 100%)', color:'#fff', padding:'48px 20px 60px'}}>
 
@@ -502,6 +778,36 @@ function Menu({ onSelectStoryline, onOpenFlows }) {
         <div style={{fontSize:15, color:'rgba(255,255,255,.55)', marginTop:12, maxWidth:720, lineHeight:1.55}}>
           Velg en <em>storyline</em> for å følge en ekte produktreise fra start til slutt — med kontekst, persona og auto-play. Eller utforsk skjermene fritt under "Quick Flows".
         </div>
+      </div>
+
+      {/* Live App — nytt, mest reelt */}
+      <div style={{maxWidth:1200, margin:'0 auto 48px'}}>
+        <div style={{fontSize:11, fontWeight:700, letterSpacing:'.2em', textTransform:'uppercase', color:'#3E8F65', marginBottom:20}}>Ny · Live App-simulering</div>
+        <button onClick={onOpenLive} style={{
+          padding:'30px 30px', borderRadius:20,
+          border:'1.5px solid #3E8F65',
+          background:'linear-gradient(135deg, rgba(62,143,101,.08), rgba(240,130,107,.05))',
+          cursor:'pointer', fontFamily:'inherit', color:'#fff',
+          display:'flex', alignItems:'center', gap:24, width:'100%',
+          textAlign:'left', transition:'all .2s',
+        }}
+        onMouseEnter={e => {e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(62,143,101,.25)';}}
+        onMouseLeave={e => {e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none';}}
+        >
+          <div style={{fontSize:40, flexShrink:0}}>▶</div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'Fraunces, serif', fontSize:26, fontWeight:700, color:'#fff', marginBottom:6, letterSpacing:'-0.01em'}}>
+              Start Live App ― klikk deg fritt rundt som en ekte bruker
+            </div>
+            <div style={{fontSize:13.5, color:'rgba(255,255,255,.72)', lineHeight:1.55, marginBottom:10}}>
+              Tab-baren i bunn er fullt funksjonell. Stack-basert navigasjon med tilbake-knapp. Starter på Home. Hver tab husker sin egen stack. Handlingsknapper under telefonen tar deg inn i detaljer — event-booking, kalender, Frida-chat, crew, profil, ambassadør-reise og Wrapped.
+            </div>
+            <div style={{display:'flex', gap:14, fontSize:11, color:'rgba(255,255,255,.5)', fontWeight:600, letterSpacing:'.08em', textTransform:'uppercase'}}>
+              <span>5 taber</span><span>·</span><span>18+ skjermer wired</span><span>·</span><span>ekte back-stack</span>
+            </div>
+          </div>
+          <div style={{fontSize:14, color:'#3E8F65', fontWeight:700}}>Start →</div>
+        </button>
       </div>
 
       {/* Storylines */}
@@ -585,13 +891,14 @@ function Menu({ onSelectStoryline, onOpenFlows }) {
 // ═════════════════════════════════════════════════════════════════
 
 function App() {
-  const [mode, setMode] = useState('menu'); // 'menu' | 'storyline' | 'flow'
+  const [mode, setMode] = useState('menu'); // 'menu' | 'storyline' | 'flow' | 'live'
   const [storylineKey, setStorylineKey] = useState(null);
 
   if (mode === 'menu') {
     return <Menu
       onSelectStoryline={(key) => { setStorylineKey(key); setMode('storyline'); }}
       onOpenFlows={() => setMode('flow')}
+      onOpenLive={() => setMode('live')}
     />;
   }
 
@@ -604,6 +911,10 @@ function App() {
 
   if (mode === 'flow') {
     return <FlowExplorer onExit={() => setMode('menu')}/>;
+  }
+
+  if (mode === 'live') {
+    return <LiveApp onExit={() => setMode('menu')}/>;
   }
 
   return null;
