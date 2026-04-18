@@ -115,46 +115,52 @@ const YI = {
 // 1) PROFIL-HOVED
 // ============================================================
 
-function ScreenProfile() {
+function ScreenProfile({ nav = {} }) {
+  const go = (target, params) => nav.push?.(target, params);
   return (
     <div style={{position:'relative', height:'100%', overflow:'hidden', background:HC.bg}}>
       <div style={{position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column', overflowY:'auto'}}>
         <H_StatusBarLight time="14:23"/>
 
         <Y_HeaderNav title="Deg" rightAction={
-          <button style={{width:38, height:38, borderRadius:19, background:HC.card, border:'none', boxShadow:'0 2px 8px rgba(42,33,52,.08)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <button onClick={() => go('profile-edit')} style={{width:38, height:38, borderRadius:19, background:HC.card, border:'none', boxShadow:'0 2px 8px rgba(42,33,52,.08)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}} aria-label="Rediger profil">
             <svg width="14" height="14" viewBox="0 0 14 14"><path d="M10 2l-8 8v2h2l8-8zM9 3l2 2" stroke={HC.fg} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         }/>
 
         {/* Hero med avatar, navn, bio */}
         <div style={{padding:'28px 28px 0', display:'flex', flexDirection:'column', alignItems:'center'}}>
-          <Y_Avatar initial="V" size={104} ring={true}/>
+          <button onClick={() => go('profile-public')} style={{border:'none', background:'transparent', cursor:'pointer', padding:0, borderRadius:52}} aria-label="Se profilen slik andre ser den">
+            <Y_Avatar initial="V" size={104} ring={true}/>
+          </button>
           <h1 style={{margin:'18px 0 0', fontSize:26, fontWeight:700, letterSpacing:'-0.02em', color:HC.fg}}>
             Viktor Sanden
           </h1>
           <p style={{margin:'6px 22px 0', textAlign:'center', fontSize:13.5, lineHeight:1.5, color:HC.fgDim, maxWidth:310}}>
             Bygger ting som folk faktisk møtes rundt. Liker kaffe, bøker og rolige samtaler som varer.
           </p>
+          <button onClick={() => go('profile-public')} style={{marginTop:10, padding:'6px 12px', borderRadius:14, border:`1px solid ${HC.divider}`, background:'transparent', cursor:'pointer', fontSize:11.5, fontWeight:600, color:HC.plum, fontFamily:'inherit'}}>
+            Se slik andre ser deg →
+          </button>
         </div>
 
-        {/* Vitalstatistikk — diskret strek med metrikk */}
+        {/* Vitalstatistikk — klikkbar, hver boks går et sted */}
         <div style={{padding:'22px 22px 0'}}>
-          <div style={{background:HC.cream, borderRadius:14, padding:'14px 16px', border:`1px solid ${HC.divider}`, display:'flex', alignItems:'center', justifyContent:'space-around', gap:8, textAlign:'center'}}>
-            <div>
+          <div style={{background:HC.cream, borderRadius:14, padding:'4px', border:`1px solid ${HC.divider}`, display:'flex', alignItems:'stretch', gap:0}}>
+            <div style={{flex:1, padding:'10px 4px', textAlign:'center'}}>
               <div style={{fontSize:10.5, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:HC.fgDim}}>Aktiv siden</div>
               <div style={{fontSize:13.5, fontWeight:700, color:HC.fg, marginTop:3}}>jan 2026</div>
             </div>
-            <div style={{width:1, height:32, background:HC.divider}}/>
-            <div>
-              <div style={{fontSize:10.5, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:HC.fgDim}}>Events</div>
+            <div style={{width:1, background:HC.divider, margin:'8px 0'}}/>
+            <button onClick={() => go('events-history')} style={{flex:1, padding:'10px 4px', textAlign:'center', border:'none', background:'transparent', cursor:'pointer', borderRadius:10, fontFamily:'inherit'}}>
+              <div style={{fontSize:10.5, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:HC.plum}}>Events ›</div>
               <div style={{fontSize:17, fontWeight:700, color:HC.fg, marginTop:1, letterSpacing:'-0.02em'}}>14</div>
-            </div>
-            <div style={{width:1, height:32, background:HC.divider}}/>
-            <div>
-              <div style={{fontSize:10.5, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:HC.fgDim}}>Nye kontakter</div>
+            </button>
+            <div style={{width:1, background:HC.divider, margin:'8px 0'}}/>
+            <button onClick={() => go('portfolio')} style={{flex:1, padding:'10px 4px', textAlign:'center', border:'none', background:'transparent', cursor:'pointer', borderRadius:10, fontFamily:'inherit'}}>
+              <div style={{fontSize:10.5, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:HC.plum}}>Kontakter ›</div>
               <div style={{fontSize:17, fontWeight:700, color:HC.fg, marginTop:1, letterSpacing:'-0.02em'}}>7</div>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -167,29 +173,33 @@ function ScreenProfile() {
               tint={HC.coral}
               title="Dine kontakter"
               subtitle="14 mennesker du har møtt"
+              onPress={() => go('portfolio')}
             />
             <Y_Row
               icon={YI.pulse}
               tint={HC.green}
               title="Sosial helse"
               subtitle="En stille månedsrapport til deg selv"
+              onPress={() => go('health')}
             />
             <Y_Row
               icon={YI.gear}
               tint={HC.plum}
               title="Innstillinger"
               subtitle="Konto, personvern, varsler"
+              onPress={() => go('settings')}
             />
           </Y_RowGroup>
         </div>
 
-        {/* "Bli vertinne?" — diskret kort til slutt */}
+        {/* "Bli vertinne?" — klikkbar, går til ambassadør-flowet */}
         <div style={{padding:'22px 22px 0'}}>
-          <button style={{
+          <button onClick={() => go('ambassador-land')} style={{
             width:'100%', border:'none', cursor:'pointer', textAlign:'left',
             background:`linear-gradient(135deg, ${HC.lilac}22, ${HC.coral}18)`,
             borderRadius:16, padding:'16px 18px',
             display:'flex', alignItems:'center', gap:14,
+            fontFamily:'inherit',
           }}>
             <div style={{width:42, height:42, borderRadius:21, background:`linear-gradient(135deg, ${HC.coral}, ${HC.plum})`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'#fff'}}>
               <svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 2l1.9 4.4 4.8.4-3.6 3.2 1.1 4.7L9 12.3 4.8 14.7l1.1-4.7L2.3 6.8l4.8-.4z" fill="currentColor"/></svg>
@@ -291,12 +301,12 @@ function Y_ContactSection({ label, sub, tint, contacts }) {
   );
 }
 
-function ScreenPortfolio() {
+function ScreenPortfolio({ nav = {} }) {
   return (
     <div style={{position:'relative', height:'100%', overflow:'hidden', background:HC.bg}}>
       <div style={{position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column', overflowY:'auto', paddingBottom:16}}>
         <H_StatusBarLight time="14:23"/>
-        <Y_HeaderNav title="Dine kontakter" onBack={() => {}}/>
+        <Y_HeaderNav title="Dine kontakter" onBack={() => nav.pop?.()}/>
 
         {/* Intro */}
         <div style={{padding:'22px 24px 4px'}}>
@@ -337,12 +347,13 @@ function ScreenPortfolio() {
 // 3) INNSTILLINGER-HOVED
 // ============================================================
 
-function ScreenSettings() {
+function ScreenSettings({ nav = {} }) {
+  const go = (target) => nav.push?.(target);
   return (
     <div style={{position:'relative', height:'100%', overflow:'hidden', background:HC.bg}}>
       <div style={{position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column', overflowY:'auto', paddingBottom:16}}>
         <H_StatusBarLight time="14:23"/>
-        <Y_HeaderNav title="Innstillinger" onBack={() => {}}/>
+        <Y_HeaderNav title="Innstillinger" onBack={() => nav.pop?.()}/>
 
         <div style={{height:10}}/>
 
@@ -350,7 +361,7 @@ function ScreenSettings() {
         <div style={{padding:'14px 22px 0'}}>
           <Y_SectionLabel>Konto</Y_SectionLabel>
           <Y_RowGroup>
-            <Y_Row icon={YI.user}  tint={HC.plum}  title="Rediger profil"  subtitle="Navn, bio, bilde"/>
+            <Y_Row icon={YI.user}  tint={HC.plum}  title="Rediger profil"  subtitle="Navn, bio, bilde" onPress={() => go('profile-edit')}/>
             <Y_Row icon={YI.mail}  tint={HC.plum}  title="E-post"           subtitle="viktor@speedfriending.com"/>
             <Y_Row icon={YI.lock}  tint={HC.plum}  title="Passord"          subtitle="Sist endret 12. mars"/>
           </Y_RowGroup>
@@ -454,14 +465,14 @@ function Y_Toggle({ active }) {
 // 4) SOSIAL HELSE — opt-in, respektfull
 // ============================================================
 
-function ScreenHealth({ activated = false }) {
+function ScreenHealth({ activated = false, nav = {} }) {
   // "activated" styrer om bruker har slått på månedsrapport.
   // Vi viser BÅDE aktivert-versjonen og opt-in-versjonen i demo ved å default'e til false.
   return (
     <div style={{position:'relative', height:'100%', overflow:'hidden', background:HC.bg}}>
       <div style={{position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column', overflowY:'auto', paddingBottom:16}}>
         <H_StatusBarLight time="14:23"/>
-        <Y_HeaderNav title="Sosial helse" onBack={() => {}}/>
+        <Y_HeaderNav title="Sosial helse" onBack={() => nav.pop?.()}/>
 
         {/* Intro — rolig tone */}
         <div style={{padding:'26px 28px 0'}}>

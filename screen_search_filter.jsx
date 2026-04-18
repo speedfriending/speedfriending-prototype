@@ -1,56 +1,67 @@
 /* global React, HC, H_StatusBarLight */
 // Search + Filter — rolige, nøkterne skjermer for Events-tab.
-// Prinsipp: vi manipulerer ikke søket. Resultater vises flatt, uten fremheving
-// uten grunn. Filter viser antall treff direkte — ikke "Bruk filter".
+// Live-filter: tastetrykk gir treff uten delay. Filter: useState per dimensjon,
+// Nullstill + Bruk filter kaller nav.pop?.().
 
 // =====================================================================
 //  SØK — inngang fra Events-tab. Tomt felt viser forslag; input gir treff.
 // =====================================================================
-function ScreenSearch() {
+function ScreenSearch({ nav = {} }) {
   const [q, setQ] = React.useState('');
   const inputRef = React.useRef(null);
 
-  // Mock-data: populate bare hvis det finnes faktiske matches
+  // Mock-data: Oslo-venuer og crewet
   const allEvents = [
-    { id:'e1', title:'Padel-kveld på Nidarø', venue:'Nidarø padelbane', date:'Tor 24. apr · 19:00', tint:HC.green },
-    { id:'e2', title:'Vinsmaking med Kari', venue:'Søstrene Karlsen',    date:'Fre 25. apr · 19:30', tint:HC.coral },
-    { id:'e3', title:'Brettspill på Trekroneren', venue:'Trekroneren',    date:'Lør 26. apr · 18:00', tint:HC.plum },
-    { id:'e4', title:'Fjelltur fra Skistua',  venue:'Bymarka',            date:'Søn 27. apr · 10:00', tint:HC.green },
+    { id:'e1', title:'Padel-kveld på Hasle',       venue:'Hasle padelbane',    date:'Tor 24. apr · 19:00', tint:HC.green },
+    { id:'e2', title:'Vinsmaking med Martine',     venue:'Søstrene Karlsen',   date:'Fre 25. apr · 19:30', tint:HC.coral },
+    { id:'e3', title:'Brettspill på Bruket',       venue:'Bruket · Grünerløkka', date:'Lør 26. apr · 18:00', tint:HC.plum },
+    { id:'e4', title:'Nordmarka-tur fra Frognerseteren', venue:'Frognerseteren', date:'Søn 27. apr · 10:00', tint:HC.green },
+    { id:'e5', title:'Jazzkveld på Cosmopolite',   venue:'Cosmopolite',        date:'Tor 1. mai · 20:00', tint:HC.plum },
+    { id:'e6', title:'Bokklubb på Tim Wendelboe',  venue:'Tim Wendelboe',      date:'Ons 30. apr · 18:30', tint:HC.amber },
   ];
   const allPeople = [
-    { id:'p1', name:'Kari Solheim',  note:'Møttes på Vinkvelden · 18. apr', initial:'K', hue:20 },
-    { id:'p2', name:'Erik Nordby',   note:'Møttes på Padel-kveld · 10. apr', initial:'E', hue:140 },
-    { id:'p3', name:'Anja Berge',    note:'Møttes på Jazzklubb · 4. apr', initial:'A', hue:270 },
-    { id:'p4', name:'Karina Lund',   note:'I crewet til Martine',           initial:'K', hue:340 },
+    { id:'kari',    name:'Kari Solheim',  note:'Møttes på Vinkvelden · 18. apr',    initial:'K', hue:20  },
+    { id:'erik',    name:'Erik Nordby',   note:'Møttes på Padel-kveld · 10. apr',   initial:'E', hue:140 },
+    { id:'anja',    name:'Anja Berge',    note:'Møttes på Jazzklubb · 4. apr',      initial:'A', hue:270 },
+    { id:'karina',  name:'Karina Lund',   note:'I crewet til Martine',              initial:'K', hue:340 },
+    { id:'lars',    name:'Lars Haugen',   note:'Møttes på Fjelltur · 30. mar',      initial:'L', hue:210 },
+    { id:'mia',     name:'Mia Østby',     note:'I crewet til Henrik',               initial:'M', hue:300 },
   ];
   const allVenues = [
-    { id:'v1', name:'Territoriet',   sub:'Vinbar · Solsiden',      count:'12 kvelder' },
-    { id:'v2', name:'Mathallen',     sub:'Mat og smak · Midtbyen', count:'9 kvelder'  },
-    { id:'v3', name:'Trekroneren',   sub:'Brettspill · Fjordgata', count:'7 kvelder'  },
-    { id:'v4', name:'Grünerløkka',   sub:'Område · Oslo',          count:'21 kvelder' },
+    { id:'v1', name:'Territoriet',      sub:'Vinbar · Grünerløkka',   count:'12 kvelder' },
+    { id:'v2', name:'Mathallen',        sub:'Mat og smak · Vulkan',   count:'9 kvelder'  },
+    { id:'v3', name:'Bruket',           sub:'Brettspill · Grünerløkka', count:'7 kvelder' },
+    { id:'v4', name:'Grünerløkka',      sub:'Område · Oslo',          count:'21 kvelder' },
+    { id:'v5', name:'Hasle padelbane',  sub:'Padel · Hasle',          count:'5 kvelder'  },
+    { id:'v6', name:'Cosmopolite',      sub:'Jazz · Majorstuen',      count:'4 kvelder'  },
   ];
   const allHosts = [
-    { id:'h1', name:'Martine L.',    role:'Vertinne · Vin & naturvin',  initial:'M', hue:350 },
-    { id:'h2', name:'Henrik A.',     role:'Vert · Brettspill',          initial:'H', hue:60  },
-    { id:'h3', name:'Ingrid R.',     role:'Vertinne · Fjelltur',        initial:'I', hue:160 },
+    { id:'martine', name:'Martine L.',  role:'Vertinne · Vin & naturvin', initial:'M', hue:350 },
+    { id:'henrik',  name:'Henrik A.',   role:'Vert · Brettspill',         initial:'H', hue:60  },
+    { id:'ingrid',  name:'Ingrid R.',   role:'Vertinne · Fjelltur',       initial:'I', hue:160 },
   ];
 
   const qLower = q.trim().toLowerCase();
   const has = (s) => s.toLowerCase().includes(qLower);
-  const eventHits = qLower ? allEvents.filter(e => has(e.title) || has(e.venue)) : [];
+  const eventHits  = qLower ? allEvents.filter(e => has(e.title) || has(e.venue)) : [];
   const peopleHits = qLower ? allPeople.filter(p => has(p.name) || has(p.note)) : [];
-  const venueHits = qLower ? allVenues.filter(v => has(v.name) || has(v.sub)) : [];
-  const hostHits = qLower ? allHosts.filter(h => has(h.name) || has(h.role)) : [];
-  const totalHits = eventHits.length + peopleHits.length + venueHits.length + hostHits.length;
+  const venueHits  = qLower ? allVenues.filter(v => has(v.name) || has(v.sub)) : [];
+  const hostHits   = qLower ? allHosts.filter(h => has(h.name) || has(h.role)) : [];
+  const totalHits  = eventHits.length + peopleHits.length + venueHits.length + hostHits.length;
 
   const recent = ['padel', 'Kari', 'Grünerløkka'];
-  const popularVenues = allVenues.slice(0, 3);
+  const popularVenues   = allVenues.slice(0, 3);
   const suggestedPeople = allPeople.slice(0, 3);
 
   React.useEffect(() => {
-    // Auto-fokus inputfelt for naturlig tastatur-flyt
     if (inputRef.current) inputRef.current.focus();
   }, []);
+
+  const closeSearch = () => nav.pop?.();
+  const openEvent = (eventId) => {
+    if (nav.push) nav.push('event-detail', { eventId });
+    else closeSearch();
+  };
 
   return (
     <div style={{position:'relative', height:'100%', overflow:'hidden', background:HC.bg}}>
@@ -95,14 +106,14 @@ function ScreenSearch() {
               </button>
             )}
           </div>
-          <button style={{
+          <button onClick={closeSearch} style={{
             border:'none', background:'transparent', cursor:'pointer',
             fontSize:14, color:HC.plum, fontWeight:600, fontFamily:'inherit',
             padding:'4px 2px',
           }}>Avbryt</button>
         </div>
 
-        {/* Sveip-indikator (antyder at søk kan avvises) */}
+        {/* Sveip-indikator */}
         <div style={{height:4, display:'flex', justifyContent:'center', marginTop:10}}>
           <div style={{width:42, height:4, borderRadius:2, background:HC.fgFaint, opacity:.35}}/>
         </div>
@@ -110,7 +121,6 @@ function ScreenSearch() {
         {/* Tom tilstand: forslag */}
         {!q && (
           <div style={{padding:'18px 22px 30px'}}>
-            {/* Nylige søk */}
             <SS_Section label="Nylige søk">
               <div style={{display:'flex', flexDirection:'column'}}>
                 {recent.map((term, i) => (
@@ -136,7 +146,6 @@ function ScreenSearch() {
               </div>
             </SS_Section>
 
-            {/* Populære venuer */}
             <SS_Section label="Populære venuer" style={{marginTop:24}}>
               <div style={{display:'flex', flexDirection:'column'}}>
                 {popularVenues.map((v, i) => (
@@ -162,7 +171,6 @@ function ScreenSearch() {
               </div>
             </SS_Section>
 
-            {/* Foreslåtte personer */}
             <SS_Section label="Foreslåtte personer" style={{marginTop:24}}>
               <div style={{display:'flex', flexDirection:'column'}}>
                 {suggestedPeople.map((p, i) => (
@@ -201,7 +209,8 @@ function ScreenSearch() {
                   <SS_Section label={`Events · ${eventHits.length}`}>
                     <div style={{display:'flex', flexDirection:'column'}}>
                       {eventHits.map((e, i) => (
-                        <div key={e.id} style={{
+                        <button key={e.id} onClick={()=>openEvent(e.id)} style={{
+                          all:'unset', boxSizing:'border-box', cursor:'pointer',
                           padding:'12px 2px',
                           borderBottom: i < eventHits.length-1 ? `1px solid ${HC.divider}` : 'none',
                           display:'flex', alignItems:'center', gap:12,
@@ -216,7 +225,7 @@ function ScreenSearch() {
                             <SS_Highlight text={e.title} q={q}/>
                             <div style={{fontSize:11, color:HC.fgDim, marginTop:2}}>{e.date} · {e.venue}</div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </SS_Section>
@@ -226,7 +235,8 @@ function ScreenSearch() {
                   <SS_Section label={`Personer · ${peopleHits.length}`} style={{marginTop: eventHits.length ? 24 : 0}}>
                     <div style={{display:'flex', flexDirection:'column'}}>
                       {peopleHits.map((p, i) => (
-                        <div key={p.id} style={{
+                        <button key={p.id} onClick={closeSearch} style={{
+                          all:'unset', boxSizing:'border-box', cursor:'pointer',
                           padding:'12px 2px',
                           borderBottom: i < peopleHits.length-1 ? `1px solid ${HC.divider}` : 'none',
                           display:'flex', alignItems:'center', gap:12,
@@ -236,7 +246,7 @@ function ScreenSearch() {
                             <SS_Highlight text={p.name} q={q}/>
                             <div style={{fontSize:11, color:HC.fgDim, marginTop:2}}>{p.note}</div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </SS_Section>
@@ -246,7 +256,8 @@ function ScreenSearch() {
                   <SS_Section label={`Venuer · ${venueHits.length}`} style={{marginTop: (eventHits.length || peopleHits.length) ? 24 : 0}}>
                     <div style={{display:'flex', flexDirection:'column'}}>
                       {venueHits.map((v, i) => (
-                        <div key={v.id} style={{
+                        <button key={v.id} onClick={closeSearch} style={{
+                          all:'unset', boxSizing:'border-box', cursor:'pointer',
                           padding:'12px 2px',
                           borderBottom: i < venueHits.length-1 ? `1px solid ${HC.divider}` : 'none',
                           display:'flex', alignItems:'center', gap:12,
@@ -261,7 +272,7 @@ function ScreenSearch() {
                             <SS_Highlight text={v.name} q={q}/>
                             <div style={{fontSize:11, color:HC.fgDim, marginTop:2}}>{v.sub} · {v.count}</div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </SS_Section>
@@ -271,7 +282,8 @@ function ScreenSearch() {
                   <SS_Section label={`Vertinner og verter · ${hostHits.length}`} style={{marginTop:(eventHits.length || peopleHits.length || venueHits.length) ? 24 : 0}}>
                     <div style={{display:'flex', flexDirection:'column'}}>
                       {hostHits.map((h, i) => (
-                        <div key={h.id} style={{
+                        <button key={h.id} onClick={closeSearch} style={{
+                          all:'unset', boxSizing:'border-box', cursor:'pointer',
                           padding:'12px 2px',
                           borderBottom: i < hostHits.length-1 ? `1px solid ${HC.divider}` : 'none',
                           display:'flex', alignItems:'center', gap:12,
@@ -281,7 +293,7 @@ function ScreenSearch() {
                             <SS_Highlight text={h.name} q={q}/>
                             <div style={{fontSize:11, color:HC.fgDim, marginTop:2}}>{h.role}</div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </SS_Section>
@@ -295,7 +307,6 @@ function ScreenSearch() {
   );
 }
 
-// Liten seksjonsoverskrift (nøktern — bare en label, ingen dekor)
 function SS_Section({ label, children, style }) {
   return (
     <div style={style}>
@@ -321,7 +332,6 @@ function SS_Avatar({ initial, hue }) {
   );
 }
 
-// Subtil uthevning i treff — bare fet, ingen fargeskifte. Rolig.
 function SS_Highlight({ text, q }) {
   const idx = text.toLowerCase().indexOf(q.trim().toLowerCase());
   if (!q || idx < 0) {
@@ -338,42 +348,62 @@ function SS_Highlight({ text, q }) {
 }
 
 // =====================================================================
-//  FILTER — full-screen sheet over Events-feed. Reset + live-CTA.
+//  FILTER — full-screen sheet over Events-feed. Reset + Bruk-filter.
 // =====================================================================
-function ScreenFilter() {
+function ScreenFilter({ nav = {} }) {
   const [priceMax, setPriceMax] = React.useState(249);
   const [days, setDays] = React.useState(['Fre','Lør']);
   const [types, setTypes] = React.useState(['Brettspill','Vinsmaking']);
   const [distance, setDistance] = React.useState(15);
+  const [timeOfDay, setTimeOfDay] = React.useState([]);      // ny: morgen/ettermiddag/kveld
+  const [crewSize, setCrewSize] = React.useState('alle');     // ny: alle/små/mellom/store
+  const [alcohol, setAlcohol] = React.useState('alle');       // ny: alle/med/uten
   const [crewOnly, setCrewOnly] = React.useState(false);
-  const [soberOnly, setSoberOnly] = React.useState(false);
   const [bringFriend, setBringFriend] = React.useState(false);
 
-  // Mocked hit-count som reagerer på valg
   const hitCount = React.useMemo(() => {
     let n = 28;
     n -= Math.floor((499 - priceMax) / 40);
     n -= (7 - days.length) * 1;
     n -= (4 - types.length) * 2;
     n -= Math.floor((30 - distance) / 4);
+    if (timeOfDay.length > 0) n -= (3 - timeOfDay.length);
+    if (crewSize !== 'alle') n -= 3;
+    if (alcohol !== 'alle') n -= 4;
     if (crewOnly) n -= 6;
-    if (soberOnly) n -= 4;
     if (bringFriend) n -= 3;
     return Math.max(0, n);
-  }, [priceMax, days, types, distance, crewOnly, soberOnly, bringFriend]);
+  }, [priceMax, days, types, distance, timeOfDay, crewSize, alcohol, crewOnly, bringFriend]);
 
   const reset = () => {
     setPriceMax(499);
     setDays([]);
     setTypes([]);
     setDistance(30);
+    setTimeOfDay([]);
+    setCrewSize('alle');
+    setAlcohol('alle');
     setCrewOnly(false);
-    setSoberOnly(false);
     setBringFriend(false);
   };
 
+  const apply = () => nav.pop?.();
+  const close = () => nav.pop?.();
+
   const allDays = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
   const allTypes = ['Brettspill','Vinsmaking','Fjelltur','Bokklubb','Jazz','Løpetur','Mat','Padel'];
+  const allTimes = ['Morgen','Ettermiddag','Kveld'];
+  const crewSizes = [
+    { id:'alle',   label:'Alle' },
+    { id:'små',    label:'2–4 pers' },
+    { id:'mellom', label:'5–8 pers' },
+    { id:'store',  label:'9+ pers' },
+  ];
+  const alcoholOpts = [
+    { id:'alle',  label:'Alle' },
+    { id:'uten',  label:'Uten alkohol' },
+    { id:'med',   label:'Med alkohol' },
+  ];
 
   const toggle = (arr, setArr, v) => {
     setArr(arr.includes(v) ? arr.filter(x=>x!==v) : [...arr, v]);
@@ -384,7 +414,6 @@ function ScreenFilter() {
       <div style={{position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column'}}>
         <H_StatusBarLight time="14:33"/>
 
-        {/* Sveip-indikator */}
         <div style={{height:4, display:'flex', justifyContent:'center', marginTop:12}}>
           <div style={{width:42, height:4, borderRadius:2, background:HC.fgFaint, opacity:.35}}/>
         </div>
@@ -397,7 +426,7 @@ function ScreenFilter() {
               Finn din kveld
             </h1>
           </div>
-          <button aria-label="Lukk filter" style={{
+          <button onClick={close} aria-label="Lukk filter" style={{
             width:34, height:34, borderRadius:17, background:HC.card, border:'none',
             boxShadow:'0 2px 8px rgba(42,33,52,.06)', cursor:'pointer',
             display:'flex', alignItems:'center', justifyContent:'center',
@@ -429,14 +458,35 @@ function ScreenFilter() {
                 const on = days.includes(d);
                 return (
                   <button key={d} onClick={()=>toggle(days, setDays, d)} style={{
-                    flex:1, padding:'10px 0', borderRadius:10, border:'none',
-                    background: on ? HC.plum : HC.card,
-                    color: on ? '#fff' : HC.fg,
-                    fontSize:12.5, fontWeight:600, cursor:'pointer',
-                    boxShadow: on ? '0 2px 8px rgba(127,77,149,.2)' : '0 1px 3px rgba(42,33,52,.04)',
+                    flex:1, padding:'10px 0', borderRadius:10,
+                    border: on ? `2px solid ${HC.plum}` : `1px solid ${HC.divider}`,
+                    background: on ? `${HC.plum}14` : HC.card,
+                    color: on ? HC.plum : HC.fg,
+                    fontSize:12.5, fontWeight:on ? 700 : 600, cursor:'pointer',
+                    boxShadow: on ? `0 2px 8px ${HC.plum}25` : '0 1px 3px rgba(42,33,52,.04)',
                     fontFamily:'inherit',
                     letterSpacing:'.01em',
                   }}>{d}</button>
+                );
+              })}
+            </div>
+          </SF_Section>
+
+          {/* Tid på dagen */}
+          <SF_Section label="Tid på dagen" value={timeOfDay.length === 0 ? 'Hele dagen' : timeOfDay.join(', ')} style={{marginTop:28}}>
+            <div style={{display:'flex', gap:8}}>
+              {allTimes.map(t => {
+                const on = timeOfDay.includes(t);
+                return (
+                  <button key={t} onClick={()=>toggle(timeOfDay, setTimeOfDay, t)} style={{
+                    flex:1, padding:'10px 0', borderRadius:22,
+                    border: on ? `2px solid ${HC.coral}` : `1px solid ${HC.divider}`,
+                    background: on ? `${HC.coral}18` : HC.card,
+                    color: on ? HC.coralDeep : HC.fg,
+                    fontSize:12.5, fontWeight:on ? 700 : 600, cursor:'pointer',
+                    boxShadow: on ? `0 2px 8px ${HC.coral}30` : '0 1px 3px rgba(42,33,52,.04)',
+                    fontFamily:'inherit',
+                  }}>{t}</button>
                 );
               })}
             </div>
@@ -449,7 +499,8 @@ function ScreenFilter() {
                 const on = types.includes(t);
                 return (
                   <button key={t} onClick={()=>toggle(types, setTypes, t)} style={{
-                    padding:'8px 14px', borderRadius:20, border:'none',
+                    padding:'8px 14px', borderRadius:20,
+                    border: on ? `2px solid ${HC.plum}` : `1px solid ${HC.divider}`,
                     background: on ? HC.plum : HC.card,
                     color: on ? '#fff' : HC.fg,
                     fontSize:13, fontWeight:600, cursor:'pointer',
@@ -464,6 +515,46 @@ function ScreenFilter() {
                     )}
                     {t}
                   </button>
+                );
+              })}
+            </div>
+          </SF_Section>
+
+          {/* Crew-størrelse */}
+          <SF_Section label="Crew-størrelse" value={crewSizes.find(c=>c.id===crewSize)?.label || 'Alle'} style={{marginTop:28}}>
+            <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+              {crewSizes.map(c => {
+                const on = crewSize === c.id;
+                return (
+                  <button key={c.id} onClick={()=>setCrewSize(c.id)} style={{
+                    flex:'1 0 calc(50% - 3px)', padding:'10px 12px', borderRadius:12,
+                    border: on ? `2px solid ${HC.green}` : `1px solid ${HC.divider}`,
+                    background: on ? `${HC.green}14` : HC.card,
+                    color: on ? HC.green : HC.fg,
+                    fontSize:12.5, fontWeight:on ? 700 : 600, cursor:'pointer',
+                    boxShadow: on ? `0 2px 8px ${HC.green}25` : '0 1px 3px rgba(42,33,52,.04)',
+                    fontFamily:'inherit',
+                  }}>{c.label}</button>
+                );
+              })}
+            </div>
+          </SF_Section>
+
+          {/* Alkohol */}
+          <SF_Section label="Alkohol" value={alcoholOpts.find(a=>a.id===alcohol)?.label || 'Alle'} style={{marginTop:28}}>
+            <div style={{display:'flex', gap:6}}>
+              {alcoholOpts.map(a => {
+                const on = alcohol === a.id;
+                return (
+                  <button key={a.id} onClick={()=>setAlcohol(a.id)} style={{
+                    flex:1, padding:'10px 6px', borderRadius:12,
+                    border: on ? `2px solid ${HC.amber}` : `1px solid ${HC.divider}`,
+                    background: on ? `${HC.amber}18` : HC.card,
+                    color: on ? HC.amber : HC.fg,
+                    fontSize:12.5, fontWeight:on ? 700 : 600, cursor:'pointer',
+                    boxShadow: on ? `0 2px 8px ${HC.amber}30` : '0 1px 3px rgba(42,33,52,.04)',
+                    fontFamily:'inherit',
+                  }}>{a.label}</button>
                 );
               })}
             </div>
@@ -489,13 +580,6 @@ function ScreenFilter() {
               onChange={setCrewOnly}
             />
             <SF_Toggle
-              label="Kun nøktern-vennlige"
-              sub="Ingen alkohol som hovedaktivitet"
-              on={soberOnly}
-              onChange={setSoberOnly}
-              border
-            />
-            <SF_Toggle
               label="Med plass til å ta med venn"
               sub="Ekstra plass tilgjengelig"
               on={bringFriend}
@@ -504,21 +588,20 @@ function ScreenFilter() {
             />
           </div>
 
-          {/* Reset-lenke (synlig, ikke skjult) */}
           <div style={{marginTop:24, textAlign:'center'}}>
             <button onClick={reset} style={{
               border:'none', background:'transparent', cursor:'pointer',
               fontSize:13, fontWeight:600, color:HC.fgDim,
               textDecoration:'underline', textUnderlineOffset:3,
               fontFamily:'inherit', padding:'8px 16px',
-            }}>Tilbakestill alle filter</button>
+            }}>Nullstill alle filter</button>
           </div>
         </div>
 
-        {/* Bunn-CTA: vis antall treff direkte */}
+        {/* Bunn-CTA */}
         <div style={{
-          position:'absolute', bottom:84, left:0, right:0,
-          padding:'16px 22px 18px',
+          position:'absolute', bottom:0, left:0, right:0,
+          padding:'16px 22px 22px',
           background:'rgba(244,237,231,.96)', backdropFilter:'blur(20px)',
           borderTop:`1px solid ${HC.divider}`,
           display:'flex', gap:12, alignItems:'center',
@@ -528,8 +611,8 @@ function ScreenFilter() {
             background:HC.card, color:HC.fg,
             fontSize:13, fontWeight:600, cursor:'pointer',
             fontFamily:'inherit',
-          }}>Reset</button>
-          <button style={{
+          }}>Nullstill</button>
+          <button onClick={apply} style={{
             flex:1, padding:'14px', borderRadius:28, border:'none',
             background: hitCount === 0 ? HC.fgFaint : HC.plum,
             color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer',
@@ -537,7 +620,7 @@ function ScreenFilter() {
             boxShadow: hitCount === 0 ? 'none' : '0 6px 16px rgba(127,77,149,.28)',
             fontFamily:'inherit',
           }}>
-            {hitCount === 0 ? 'Ingen events matcher' : `Vis ${hitCount} events`}
+            {hitCount === 0 ? 'Ingen events matcher' : `Bruk filter · ${hitCount} events`}
           </button>
         </div>
       </div>
@@ -562,11 +645,8 @@ function SF_Slider({ min, max, step, value, onChange, leftLabel, rightLabel }) {
   return (
     <div>
       <div style={{position:'relative', height:36, display:'flex', alignItems:'center'}}>
-        {/* Track */}
         <div style={{position:'absolute', left:0, right:0, height:4, borderRadius:2, background:HC.divider}}/>
-        {/* Fill */}
         <div style={{position:'absolute', left:0, width:`${pct}%`, height:4, borderRadius:2, background:HC.plum}}/>
-        {/* Native range for interaksjon */}
         <input
           type="range"
           min={min} max={max} step={step}
@@ -579,7 +659,6 @@ function SF_Slider({ min, max, step, value, onChange, leftLabel, rightLabel }) {
           }}
           className="sf_range"
         />
-        {/* Knott */}
         <div style={{
           position:'absolute', left:`calc(${pct}% - 11px)`,
           width:22, height:22, borderRadius:11, background:'#fff',

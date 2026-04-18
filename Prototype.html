@@ -18,11 +18,15 @@
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
 
 <script type="text/babel" src="shared_home.jsx"></script>
+<script type="text/babel" src="personas_registry.jsx"></script>
 <script type="text/babel" src="screen_home.jsx"></script>
 <script type="text/babel" src="screen_events.jsx"></script>
+<script type="text/babel" src="screen_event_detail.jsx"></script>
 <script type="text/babel" src="screen_chat.jsx"></script>
+<script type="text/babel" src="screen_videochat.jsx"></script>
 <script type="text/babel" src="screen_crew.jsx"></script>
 <script type="text/babel" src="screen_you.jsx"></script>
+<script type="text/babel" src="screen_profile_extra.jsx"></script>
 <script type="text/babel" src="screen_edge_cases.jsx"></script>
 <script type="text/babel" src="screen_monetization.jsx"></script>
 <script type="text/babel" src="screen_onboarding_extras.jsx"></script>
@@ -495,125 +499,192 @@ function FlowExplorer({ onExit }) {
 // Klikk handlinger under telefonen for å gå videre i en reise.
 // ═════════════════════════════════════════════════════════════════
 
+// Helper: render-funksjon som sender nav + params til skjermen.
+// Looker opp ved render-tid for å unngå load-order-issues.
+// Aksepterer komponent-navn (string) med valgfri fallback-navn,
+// og valgfritt ekstra-props-objekt.
+const mk = (primaryName, fallbackName, extraProps = {}) => (nav, params = {}) => {
+  if (typeof primaryName !== 'string') {
+    // Backwards-compat: hvis noen sendte en komponent-ref direkte
+    const Comp = primaryName;
+    if (!Comp) return <div style={{padding:40, color:'#999'}}>Skjerm mangler</div>;
+    return <Comp nav={nav} {...extraProps} {...params}/>;
+  }
+  const Comp = window[primaryName] || (fallbackName ? window[fallbackName] : null);
+  if (!Comp) return <div style={{padding:40, color:'#999'}}>Skjerm mangler: {primaryName}{fallbackName ? ` eller ${fallbackName}` : ''}</div>;
+  return <Comp nav={nav} {...extraProps} {...params}/>;
+};
+
 const LIVE_SCREENS = {
   // ━━━ HOVED-TABS (rot for hver tab) ━━━
   'home': {
-    render: () => <window.H_ScreenHome/>,
+    render: mk('H_ScreenHome'),
     tab: 'home',
     label: 'Hjem',
     actions: [
       { type:'push',   target:'event-detail', label:'Åpne kveldens event' },
       { type:'switch', target:'events',       label:'Se alle events' },
-      { type:'push',   target:'frida',        label:'Snakk med Frida' },
+      { type:'push',   target:'notifications',label:'Varsler' },
     ],
   },
   'events': {
-    render: () => <window.H_ScreenEvents/>,
+    render: mk('H_ScreenEvents'),
     tab: 'events',
     label: 'Events',
     actions: [
-      { type:'push', target:'event-detail',  label:'Vinsmaking med Martine' },
+      { type:'push', target:'event-detail',  params:{eventId:1}, label:'Vinsmaking med Martine' },
       { type:'push', target:'search',        label:'Søk events' },
       { type:'push', target:'filter',        label:'Filter' },
     ],
   },
   'crew': {
-    render: () => <window.H_ScreenCrewList/>,
+    render: mk('H_ScreenCrewList'),
     tab: 'crew',
     label: 'Crew',
     actions: [
-      { type:'push', target:'crew-detail',  label:'Åpne Onsdag-crew' },
+      { type:'push', target:'crew-detail',  params:{crewId:'onsdag'}, label:'Åpne Onsdag-crew' },
       { type:'push', target:'crew-chat',    label:'Crew-chat' },
     ],
   },
   'chat': {
-    render: () => <window.H_ScreenChatList/>,
+    render: mk('H_ScreenChatList'),
     tab: 'chat',
     label: 'Chat',
     actions: [
-      { type:'push', target:'chat-detail',  label:'Chat med Kari' },
-      { type:'push', target:'frida',        label:'Snakk med Frida' },
+      { type:'push', target:'chat-detail',  params:{personaId:'kari'}, label:'Chat med Kari' },
+      { type:'push', target:'chat-detail',  params:{personaId:'frida'}, label:'Snakk med Frida' },
     ],
   },
   'you': {
-    render: () => <window.H_ScreenProfile/>,
+    render: mk('H_ScreenProfile'),
     tab: 'you',
     label: 'Du',
     actions: [
-      { type:'push', target:'portfolio',        label:'Din portefølje (kontakter)' },
-      { type:'push', target:'health',           label:'Min sosiale helse' },
+      { type:'push', target:'profile-edit',     label:'Rediger profil' },
+      { type:'push', target:'profile-public',   label:'Slik andre ser deg' },
+      { type:'push', target:'events-history',   label:'14 events du har vært på' },
+      { type:'push', target:'portfolio',        label:'Dine kontakter' },
+      { type:'push', target:'health',           label:'Sosial helse' },
       { type:'push', target:'settings',         label:'Innstillinger' },
       { type:'push', target:'ambassador-land',  label:'Bli vertinne' },
       { type:'push', target:'wrapped',          label:'Vis Wrapped 2026' },
     ],
   },
 
-  // ━━━ DETALJ-SKJERMER (stackes på toppen av en tab) ━━━
+  // ━━━ DETALJ-SKJERMER ━━━
+
+  // Events-familien
   'event-detail': {
-    render: () => <window.H_ScreenConfirmation/>,
+    render: mk('H_ScreenEventDetail', 'H_ScreenConfirmation'),
     label: 'Event-detalj',
     actions: [
+      { type:'push', target:'confirmation',  label:'Reserver plass — 199 kr' },
+      { type:'pop',  label:'Tilbake' },
+    ],
+  },
+  'confirmation': {
+    render: mk('H_ScreenConfirmation'),
+    label: 'Reservasjon bekreftet',
+    actions: [
       { type:'push', target:'calendar',   label:'Legg i kalender' },
-      { type:'pop',  label:'Tilbake til events' },
+      { type:'popAll', label:'Ferdig' },
     ],
   },
   'calendar': {
-    render: () => <window.H_ScreenCalendarInvite/>,
+    render: mk('H_ScreenCalendarInvite'),
     label: 'Kalender-invitasjon',
-    actions: [
-      { type:'popAll', label:'Ferdig — tilbake til Events' },
-    ],
+    actions: [{ type:'popAll', label:'Ferdig' }],
   },
   'search': {
-    render: () => <window.H_ScreenSearch/>,
+    render: mk('H_ScreenSearch'),
     label: 'Søk',
     actions: [{ type:'pop', label:'Tilbake' }],
   },
   'filter': {
-    render: () => <window.H_ScreenFilter/>,
+    render: mk('H_ScreenFilter'),
     label: 'Filter',
     actions: [{ type:'pop', label:'Bruk filter' }],
   },
+
+  // Crew-familien
   'crew-detail': {
-    render: () => <window.H_ScreenCrewDetail/>,
+    render: mk('H_ScreenCrewDetail'),
     label: 'Crew-detalj',
     actions: [
-      { type:'push', target:'crew-chat', label:'Åpne crew-chat' },
+      { type:'push', target:'crew-chat',   label:'Chat med crew' },
+      { type:'push', target:'member-profile', params:{memberId:'kari'}, label:'Se medlem' },
       { type:'pop',  label:'Tilbake' },
     ],
   },
   'crew-chat': {
-    render: () => <window.H_ScreenCrewChat/>,
+    render: mk('H_ScreenCrewChat'),
     label: 'Crew-chat',
+    actions: [
+      { type:'push', target:'videochat', params:{groupCall:true}, label:'Start videochat' },
+      { type:'pop', label:'Tilbake' },
+    ],
+  },
+  'member-profile': {
+    render: mk('H_ScreenMemberProfile', 'H_ScreenProfilePublic'),
+    label: 'Medlemsprofil',
+    actions: [
+      { type:'push', target:'chat-detail', params:{personaId:'kari'}, label:'Send melding' },
+      { type:'push', target:'videochat',   params:{personaId:'kari'}, label:'Videochat' },
+      { type:'pop', label:'Tilbake' },
+    ],
+  },
+
+  // Chat-familien
+  'chat-detail': {
+    render: mk('H_ScreenChatDetail'),
+    label: 'Chat-detalj',
+    actions: [
+      { type:'push', target:'videochat', params:{personaId:'kari'}, label:'Start videochat' },
+      { type:'pop', label:'Tilbake til chat' },
+    ],
+  },
+  'videochat': {
+    render: mk('H_ScreenVideoChat', 'H_ScreenChatDetail'),
+    label: 'Videochat',
+    actions: [{ type:'pop', label:'Avslutt samtale' }],
+  },
+
+  // Du-familien
+  'profile-public': {
+    render: mk('H_ScreenProfilePublic'),
+    label: 'Slik andre ser deg',
     actions: [{ type:'pop', label:'Tilbake' }],
   },
-  'chat-detail': {
-    render: () => <window.H_ScreenChatDetail/>,
-    label: 'Chat-detalj',
-    actions: [{ type:'pop', label:'Tilbake til chat' }],
+  'profile-edit': {
+    render: mk('H_ScreenProfileEdit'),
+    label: 'Rediger profil',
+    actions: [{ type:'pop', label:'Lagre og tilbake' }],
   },
-  'frida': {
-    render: () => <window.H_ScreenChatDetail/>,
-    label: 'Frida (AI-venninne)',
+  'events-history': {
+    render: mk('H_ScreenEventsHistory'),
+    label: 'Events-historikk',
     actions: [{ type:'pop', label:'Tilbake' }],
   },
   'portfolio': {
-    render: () => <window.H_ScreenPortfolio/>,
+    render: mk('H_ScreenPortfolio'),
     label: 'Portefølje',
     actions: [{ type:'pop', label:'Tilbake' }],
   },
   'health': {
-    render: () => <window.H_ScreenHealth/>,
+    render: mk('H_ScreenHealth'),
     label: 'Sosial helse',
     actions: [{ type:'pop', label:'Tilbake' }],
   },
   'settings': {
-    render: () => <window.H_ScreenSettings/>,
+    render: mk('H_ScreenSettings'),
     label: 'Innstillinger',
-    actions: [{ type:'pop', label:'Tilbake' }],
+    actions: [
+      { type:'push', target:'profile-edit', label:'Rediger profil' },
+      { type:'pop', label:'Tilbake' },
+    ],
   },
   'ambassador-land': {
-    render: () => <window.H_WebAmbassador/>,
+    render: mk('H_WebAmbassador'),
     label: 'Bli vertinne (web)',
     phone: 'web',
     actions: [
@@ -622,28 +693,35 @@ const LIVE_SCREENS = {
     ],
   },
   'ambassador-create': {
-    render: () => <window.H_ScreenAmbCreate1/>,
+    render: mk('H_ScreenAmbCreate1'),
     label: 'Arrangør — nytt event',
     actions: [{ type:'pop', label:'Tilbake' }],
   },
   'wrapped': {
-    render: () => <window.H_ScreenWrapped/>,
+    render: mk('H_ScreenWrapped'),
     label: 'Wrapped 2026',
+    actions: [{ type:'pop', label:'Tilbake' }],
+  },
+  'notifications': {
+    render: mk('H_ScreenNotifications', 'H_ScreenChatList'),
+    label: 'Varsler',
     actions: [{ type:'pop', label:'Tilbake' }],
   },
 };
 
 function LiveApp({ onExit }) {
-  // Per-tab stack: hver tab husker sin egen navigasjon
+  // Per-tab stack: hver tab husker sin egen navigasjon.
+  // Stack-elementer er {key, params} så vi kan sende data mellom skjermer.
   const [tab, setTab] = useState('home');
   const [stacks, setStacks] = useState({ home:[], events:[], crew:[], chat:[], you:[] });
 
   const currentStack = stacks[tab] || [];
-  const currentScreenKey = currentStack.length > 0 ? currentStack[currentStack.length-1] : tab;
+  const currentEntry = currentStack.length > 0 ? currentStack[currentStack.length-1] : { key: tab, params: {} };
+  const currentScreenKey = currentEntry.key;
   const config = LIVE_SCREENS[currentScreenKey];
 
-  const push = (target) => {
-    setStacks(s => ({ ...s, [tab]: [...(s[tab]||[]), target] }));
+  const push = (target, params = {}) => {
+    setStacks(s => ({ ...s, [tab]: [...(s[tab]||[]), { key: target, params }] }));
   };
   const pop = () => {
     setStacks(s => ({ ...s, [tab]: (s[tab]||[]).slice(0, -1) }));
@@ -655,8 +733,12 @@ function LiveApp({ onExit }) {
     setTab(newTab);
   };
 
+  // Nav-objekt som sendes til alle skjermer — gir dem mulighet til å
+  // navigere selv fra interne klikkbare elementer.
+  const nav = { push, pop, popAll, switchTab };
+
   const handleAction = (a) => {
-    if (a.type === 'push') push(a.target);
+    if (a.type === 'push') push(a.target, a.params);
     else if (a.type === 'pop') pop();
     else if (a.type === 'popAll') popAll();
     else if (a.type === 'switch') { popAll(); switchTab(a.target); }
@@ -666,7 +748,7 @@ function LiveApp({ onExit }) {
   const phoneType = config.phone === 'web' ? undefined : tab;
 
   // Breadcrumb: Tab · Detail1 · Detail2
-  const crumbs = [LIVE_SCREENS[tab].label, ...currentStack.map(k => LIVE_SCREENS[k]?.label || k)];
+  const crumbs = [LIVE_SCREENS[tab].label, ...currentStack.map(entry => LIVE_SCREENS[entry.key]?.label || entry.key)];
 
   return (
     <div style={{minHeight:'100vh', background:'linear-gradient(160deg, #1A0F22 0%, #0F0812 100%)', color:'#fff', padding:'32px 20px 60px'}}>
@@ -701,7 +783,7 @@ function LiveApp({ onExit }) {
       <div style={{display:'flex', justifyContent:'center', marginBottom:16, position:'relative'}}>
         <div style={{position:'relative'}}>
           <H_Phone activeTab={phoneType} onTabChange={switchTab}>
-            {config.render()}
+            {config.render(nav, currentEntry.params || {})}
           </H_Phone>
           {stackDepth > 0 && (
             <button
