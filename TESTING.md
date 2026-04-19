@@ -5,7 +5,6 @@
 Dette er sjekklisten for å teste prototypen. Alle tester skal kunne utføres i nettleser — ingen installasjon, ingen build.
 
 **Live URL:** https://vagabonds-as.github.io/speedfriending-prototype/
-(Blir flyttet til `https://vagabonds-as.github.io/speedfriending-prototype/` når transfer er godkjent.)
 
 **Lokalt:** `python3 -m http.server 8000` i repo-rot, deretter `http://localhost:8000/Prototype.html`.
 
@@ -155,11 +154,11 @@ Test alle 6 storylines:
 
 Disse er bevisst ikke implementert ennå:
 
-- Knapper inne i skjermene (som "Se detaljer" på event-kortet i Home) er dekorative — bruk handlingsknappene under telefonen i stedet
-- Tekst-input i søk/filter/chat er ikke interaktiv
-- Ingen ekte data-lagring (refresh = reset)
+- Tekst-input i chat-feltet er mocket (emoji/sticker-panel åpner og lukker, men "send" lagrer ingenting)
+- Ingen ekte data-lagring (refresh = reset alle valg)
 - Vipps-flow er mocket (ingen ekte betaling)
 - Tab-bar på web-skjermer (ambassadør-landing etc) er bevisst skjult
+- Videochat er statisk mock (avatar + animert bakgrunn, ingen ekte WebRTC)
 
 ---
 
