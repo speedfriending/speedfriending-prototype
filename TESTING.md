@@ -4,7 +4,7 @@
 
 Dette er sjekklisten for å teste prototypen. Alle tester skal kunne utføres i nettleser — ingen installasjon, ingen build.
 
-**Live URL:** https://speedfriending.github.io/speedfriending-prototype/
+**Live URL:** https://vagabonds-as.github.io/speedfriending-prototype/
 (Blir flyttet til `https://vagabonds-as.github.io/speedfriending-prototype/` når transfer er godkjent.)
 
 **Lokalt:** `python3 -m http.server 8000` i repo-rot, deretter `http://localhost:8000/Prototype.html`.
